@@ -1,7 +1,22 @@
 # tflite2cpp
+
 Research and implementation notes on porting TensorFlow Lite models to C++ for efficient inference
 
 ---
+
+## Build `Dockerfile`
+
+```shell
+docker build \
+  --build-arg PASSWORD=docker \
+  --build-arg SSH_PUB_KEY="$(cat ~/.ssh/id_rsa.pub)" \
+  --build-arg SSH_PRIV_KEY="$(cat ~/.ssh/id_rsa)" \
+  --build-arg AUTH_KEY="$(cat ~/.ssh/authorized_keys)" \
+  --build-arg USE_LOCAL_SSH_KEY="${USE_LOCAL_SSH_KEY}" \
+  -t tvm ./
+
+docker run -p 20334:22 -itd --name tvm tvm
+```
 
 ## References
 
