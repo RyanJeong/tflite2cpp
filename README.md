@@ -4,6 +4,15 @@ Research and implementation notes on porting TensorFlow Lite models to C++ for e
 
 ---
 
+## Types of IR in TVM
+
+| Level             | IR Name                  | Description                                                                                                                                   |
+|------------------|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| High-level        | Relay                    | A functional programming-based IR representing neural networks; used for optimizations like operator fusion, layout transforms, etc.          |
+| Mid-level         | Tensor Expression (TE)   | Describes how a computation should be computed using loops and indexing (algorithm + schedule). It is more low-level than Relay.              |
+| Low-level         | TIR (Tensor IR)          | TVM’s imperative IR that represents lowered loops, memory accesses, and hardware-level parallelism (e.g., threads).                           |
+| Hardware-specific | CodeGen IRs              | These are representations targeting CUDA, Metal, LLVM IR, etc. They are used during code generation for specific backends.                    |
+
 ## Build `Dockerfile`
 
 ```shell
