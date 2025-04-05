@@ -28,23 +28,27 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y \
-      sudo \
-      openssh-server \
-      gcc \
-      g++ \
-      git \
-      build-essential \
-      cmake \
-      git \
-      wget \
-      curl \
-      unzip \
-      vim \
-      python3 \
-      python3-pip \
-      python3-setuptools \
-      python3-dev \
-      ninja-build && \
+        sudo \
+        openssh-server \
+        gcc \
+        g++ \
+        git \
+        vim \
+        make \
+        cmake \
+        ninja-build \
+        python3 \
+        python3-pip \
+        python3-dev \
+        libllvm15 \
+        llvm-15 \
+        llvm-15-dev \
+        clang-15 \
+        libclang-15-dev \
+        curl \
+        wget \
+        unzip \
+        build-essential && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -75,49 +79,48 @@ RUN mkdir -p /run/sshd && \
 # set a default shell
 RUN sed -i 's:/bin/sh:/bin/bash:g' /etc/passwd
 
-# Upgrade pip and install required Python packages
-RUN python3 -m pip install --upgrade pip
-RUN pip3 install numpy scipy decorator attrs tornado psutil \
-    typing-extensions cloudpickle pytest jinja2 onnx onnxruntime tflite-runtime
+# Setup LLVM
+RUN ln -sf /usr/bin/llvm-config-15 /usr/local/bin/llvm-config
 
-# Install LLVM and Clang
-WORKDIR /usr/local
-RUN git clone --depth=1 --branch llvmorg-16.0.0 https://github.com/llvm/llvm-project.git \
-    && mkdir -p llvm-project/build \
-    && cd llvm-project/build \
-    && cmake -DCMAKE_BUILD_TYPE=Release \
-        -DLLVM_ENABLE_PROJECTS="clang" \
-        -G "Unix Makefiles" ../llvm \
-    && make -j$(nproc) \
-    && make install
+# Install Python Modules
+RUN pip3 install --upgrade pip setuptools wheel && \
+    pip3 install \
+        numpy==1.23 \
+        cython \
+        pytest \
+        typing_extensions \
+        flatbuffers==2.0.0 \
+        tflite==2.4.0
 
-# Install Cython
-RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip3 install --no-cache-dir Cython
-
-# Install TVM
+# Clone TVM v0.19
 WORKDIR /opt
-RUN git clone --recursive https://github.com/apache/tvm tvm \
-    && cd tvm \
-    && mkdir build \
-    && cp cmake/config.cmake build \
-    && cd build \
-    && cmake .. \
-        -DUSE_LLVM=/usr/local/bin/llvm-config \
-        -DUSE_RELAY=ON \
-        -DUSE_GRAPH_EXECUTOR=ON \
-        -DUSE_RELAY_DEBUG=ON \
-    && make -j$(nproc)
+RUN git clone --recursive https://github.com/apache/tvm tvm && \
+    pushd tvm && \
+    git checkout v0.19.0 && \
+    git submodule update --init --recursive && \
+    popd
 
-# Install Python TVM packages
+# Make a build directory, configure, and build
+WORKDIR /opt/tvm/build
+RUN cmake .. \
+        -G Ninja \
+        -DUSE_LLVM=/usr/bin/llvm-config-15 \
+        -DUSE_CUDA=OFF \
+        -DUSE_OPENCL=OFF \
+        -DUSE_RPC=OFF \
+        -DUSE_SORT=OFF \
+        -DUSE_GRAPH_RUNTIME=ON \
+        -DUSE_MICRO=ON \
+        -DCMAKE_BUILD_TYPE=Release && \
+    ninja
+
+# Install Python packages to use TVM
 WORKDIR /opt/tvm/python
-RUN pip3 install --no-cache-dir -e .
+RUN python3 -m pip install -e .
 
-# Set environment variables
+# Environment
 ENV TVM_HOME=/opt/tvm
-ENV PYTHONPATH=$TVM_HOME/python:$PYTHONPATH
-ENV PATH=$TVM_HOME/build:$PATH
-ENV LD_LIBRARY_PATH=/opt/tvm/build:$LD_LIBRARY_PATH
+ENV PYTHONPATH=$TVM_HOME/python:${PYTHONPATH}
 
 #### To be able to run SSH
 WORKDIR "${USER_HOME}"
