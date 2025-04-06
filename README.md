@@ -70,13 +70,21 @@ tar -xf model.tar
 ```
   
 3. In the extracted folder, clone dlpack (build dependency): 
+
 ```bash
 git clone https://github.com/dmlc/dlpack.git
 ```
 
 4. Compile the `c` files with your desired compiler flags: 
+
 ```bash
 gcc -c *.c  -I/opt/tvm/include -I./dlpack/include -lm
+```
+
+5. Use object files where you need to use inferencing:
+
+```bash
+gcc main.c output/*.o -lm
 ```
 
 ---
